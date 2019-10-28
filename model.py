@@ -57,15 +57,15 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
         self.seed = torch.manual_seed(seed)
-        # Append the output size to the
-        fc_layers.append(1)
+        # Append the output size to the layers's dimensions
+        dims = fc_layers + [1]
         # Create a list of layers
         layers_list = []
-        layers_list.append(nn.Linear(state_size, fc_layers[0]))
+        layers_list.append(nn.Linear(state_size, dims[0]))
         # The second layer receives the the first layer output + action
-        layers_list.append(nn.Linear(fc_layers[0] + action_size, fc_layers[1]))
+        layers_list.append(nn.Linear(dims[0] + action_size, dims[1]))
         # Build the next layers, if that is the case
-        for dim_in, dim_out in zip(fc_layers[1:-1], fc_layers[2:]):
+        for dim_in, dim_out in zip(dims[1:-1], dims[2:]):
             layers_list.append(nn.Linear(dim_in, dim_out))
         # Store the layers as a ModuleList
         self.fc_layers = nn.ModuleList(layers_list)
