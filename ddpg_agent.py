@@ -43,7 +43,11 @@ class Agent():
         self.critic_local = Critic(state_size, action_size, random_seed).to(_device)
         self.critic_target = Critic(state_size, action_size, random_seed).to(_device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=_lr_critic)
-        
+
+        # Initialize target networks weights with the local networks ones
+        self.soft_update(self.actor_local, self.actor_target, 1)
+        self.soft_update(self.critic_local, self.critic_target, 1)
+
         # Replay Buffer
         self.replay_buffer = ReplayBuffer(random_seed)
     
@@ -109,7 +113,7 @@ class Agent():
         self.soft_update(self.critic_local, self.critic_target)
         self.soft_update(self.actor_local, self.actor_target)
         
-    def soft_update(self, local_model, target_model):
+    def soft_update(self, local_model, target_model, tau=_tau):
         """Soft update model parameters.
         θ_target = τ*θ_local + (1 - τ)*θ_target
 
@@ -119,7 +123,7 @@ class Agent():
             target_model: PyTorch model (weights will be copied to)
         """
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
-            target_param.data.copy_(_tau*local_param.data + (1.0-_tau)*target_param.data)
+            target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
 
 
 class ReplayBuffer:

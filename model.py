@@ -3,6 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def _reset_parameters(layers):
+    for layer in layers:
+        layer.weight.data.uniform_(-3e-3,3e-3)
+
+
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
@@ -22,7 +27,11 @@ class Actor(nn.Module):
         # Create the hidden layers
         self.fc_layers = nn.ModuleList(
             [nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(dims[:-1], dims[1:])])
-        
+        # Initialize the hidden layer weights
+        _reset_parameters(self.fc_layers)
+
+        print('Actor network built:', self.fc_layers)
+
     def forward(self, x):
         """Build an actor (policy) network that maps states -> actions."""
         # Pass the input through all the layers apllying ReLU activation, but the last
@@ -60,7 +69,11 @@ class Critic(nn.Module):
             layers_list.append(nn.Linear(dim_in, dim_out))
         # Store the layers as a ModuleList
         self.fc_layers = nn.ModuleList(layers_list)
-        
+        # Initialize the hidden layer weights
+        _reset_parameters(self.fc_layers)
+
+        print('Critic network built:', self.fc_layers)
+
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
         # Pass the states into the first layer
