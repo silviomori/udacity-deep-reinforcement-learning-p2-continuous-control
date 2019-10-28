@@ -38,7 +38,7 @@ class Agent():
         self.actor_local = Actor(state_size, action_size, random_seed).to(_device)
         self.actor_target = Actor(state_size, action_size, random_seed).to(_device)
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=_lr_actor)
-        
+
         # Critic Network
         self.critic_local = Critic(state_size, action_size, random_seed).to(_device)
         self.critic_target = Critic(state_size, action_size, random_seed).to(_device)
@@ -50,23 +50,32 @@ class Agent():
 
         # Replay Buffer
         self.replay_buffer = ReplayBuffer(random_seed)
-    
+
+        # Noise process
+        self.noise = OUNoise(action_size, random_seed)
+        self.noise_decay = 0.999
+
     def act(self, state):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().to(_device)
-        
+
         self.actor_local.eval()
         with torch.no_grad():
-            action = self.actor_local(state).data.numpy()
+            action = self.actor_local(state).data.cpu().numpy()
         self.actor_local.train()
-        
-        return action
-    
+
+        # Add noise to the action in order to explore the environment
+        action += self.noise_decay * self.noise.sample()
+        # Decay the noise process along the time
+        self.noise_decay *= self.noise_decay
+        # Clip the action values after adding noise
+        return np.clip(action, -1, 1)
+
     def step(self, states, actions, rewards, next_states):
         """Save experience in replay buffer, and use random sample from buffer to learn."""
         # Save experience
         self.replay_buffer.add(states, actions, rewards, next_states)
-    
+
         # Learn, if enough samples are available in memory
         if len(self.replay_buffer) > _batch_size:
             experiences = self.replay_buffer.sample()
@@ -153,9 +162,32 @@ class ReplayBuffer:
         actions = torch.from_numpy(np.vstack([e.actions for e in experiences if e is not None])).float().to(_device)
         rewards = torch.from_numpy(np.vstack([e.rewards for e in experiences if e is not None])).float().to(_device)
         next_states = torch.from_numpy(np.vstack([e.next_states for e in experiences if e is not None])).float().to(_device)
-        
+
         return (states, actions, rewards, next_states)
     
     def __len__(self):
         """Return the current size of internal memory."""
         return len(self.memory)
+
+
+class OUNoise:
+    """Ornstein-Uhlenbeck process."""
+
+    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
+        """Initialize parameters and noise process."""
+        self.mu = mu * np.ones(size)
+        self.theta = theta
+        self.sigma = sigma
+        self.seed = random.seed(seed)
+        self.reset()
+
+    def reset(self):
+        """Reset the internal state (= noise) to mean (mu)."""
+        self.state = copy.copy(self.mu)
+
+    def sample(self):
+        """Update internal state and return it as a noise sample."""
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
+        self.state = x + dx
+        return self.state
