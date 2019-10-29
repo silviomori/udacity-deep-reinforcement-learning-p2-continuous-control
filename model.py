@@ -71,19 +71,23 @@ class Critic(nn.Module):
         self.fc_layers = nn.ModuleList(layers_list)
         # Initialize the hidden layer weights
         _reset_parameters(self.fc_layers)
+        # Add batch normalization to the first hidden layer
+        self.bn = nn.BatchNorm1d(dims[0])
 
         print('Critic network built:', self.fc_layers)
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
         # Pass the states into the first layer
-        x = F.relu(self.fc_layers[0](state))
+        x = self.fc_layers[0](state)
+        x = self.bn(x)
+        x = F.relu(x)
         # Concatenate the first layer output with the action
         x = torch.cat((x, action), dim=1)
         # Pass the input through all the layers apllying ReLU activation, but the last
         for layer in self.fc_layers[1:-1]:
             x = F.relu(layer(x))
         # Pass the result through the output layer apllying sigmoid activation
-        x = F.sigmoid(self.fc_layers[-1](x))
+        x = torch.sigmoid(self.fc_layers[-1](x))
         # Return the Q-Value for the input state-action
         return x
