@@ -9,7 +9,8 @@ import torch.optim as optim
 
 from model import Actor, Critic
 
-_batch_size = 64
+
+_batch_size = 2
 _buffer_size = int(1e5)
 _gamma = 0.99
 _lr_actor = 1e-4
@@ -35,13 +36,13 @@ class Agent():
         self.seed = random.seed(random_seed)
 
         # Actor Network
-        self.actor_local = Actor(state_size, action_size, random_seed).to(_device)
-        self.actor_target = Actor(state_size, action_size, random_seed).to(_device)
+        self.actor_local = Actor(state_size, action_size, random_seed, [400, 300]).to(_device)
+        self.actor_target = Actor(state_size, action_size, random_seed, [400, 300]).to(_device)
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=_lr_actor)
 
         # Critic Network
-        self.critic_local = Critic(state_size, action_size, random_seed).to(_device)
-        self.critic_target = Critic(state_size, action_size, random_seed).to(_device)
+        self.critic_local = Critic(state_size, action_size, random_seed, [400, 300]).to(_device)
+        self.critic_target = Critic(state_size, action_size, random_seed, [400, 300]).to(_device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=_lr_critic)
 
         # Initialize target networks weights with the local networks ones
@@ -55,7 +56,7 @@ class Agent():
         self.noise = OUNoise(action_size, random_seed)
         self.noise_decay = 0.999
 
-    def act(self, state):
+    def act(self, state, noise=True):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().to(_device)
 
@@ -64,11 +65,12 @@ class Agent():
             action = self.actor_local(state).data.cpu().numpy()
         self.actor_local.train()
 
-        # Add noise to the action in order to explore the environment
-        action += self.noise_decay * self.noise.sample()
-        # Decay the noise process along the time
-        self.noise_decay *= self.noise_decay
-        # Clip the action values after adding noise
+        if noise:
+            # Add noise to the action in order to explore the environment
+            action += self.noise_decay * self.noise.sample()
+            # Decay the noise process along the time
+            self.noise_decay *= self.noise_decay
+
         return np.clip(action, -1, 1)
 
     def step(self, states, actions, rewards, next_states):
