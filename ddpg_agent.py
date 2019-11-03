@@ -10,12 +10,13 @@ import torch.optim as optim
 from model import Actor, Critic
 
 
-_batch_size = 2
+_batch_size = 128
 _buffer_size = int(1e5)
 _gamma = 0.99
-_lr_actor = 1e-4
+_lr_actor = 1e-3
 _lr_critic = 1e-3
 _tau = 1e-2
+_noise_decay = 0.999
 _device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -35,6 +36,16 @@ class Agent():
         self.action_size = action_size
         self.seed = random.seed(random_seed)
 
+        print('DDPG Agent hyperparameters:\n\t' \
+              'batch size: \t\t{:8.0f}\n\t' \
+              'buffer size: \t\t{:8.0f}\n\t' \
+              'discount / gamma: \t{:8.3f}\n\t' \
+              'actor learning rate: \t{:8.3f}\n\t' \
+              'critic learning rate: \t{:8.3f}\n\t' \
+              'soft update / tau: \t{:8.3f}\n\t' \
+              'noise decay rate: \t{:8.3f}\n'
+              .format(_batch_size, _buffer_size, _gamma,
+                      _lr_actor, _lr_critic, _tau, _noise_decay))
         # Actor Network
         self.actor_local = Actor(state_size, action_size, random_seed, [400, 300]).to(_device)
         self.actor_target = Actor(state_size, action_size, random_seed, [400, 300]).to(_device)
@@ -54,7 +65,7 @@ class Agent():
 
         # Noise process
         self.noise = OUNoise(action_size, random_seed)
-        self.noise_decay = 0.999
+        self.noise_decay = _noise_decay
 
     def act(self, state, noise=True):
         """Returns actions for given state as per current policy."""
@@ -109,6 +120,7 @@ class Agent():
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1)
         self.critic_optimizer.step()
         
         # ---------------------------- update actor ---------------------------- #
