@@ -15,7 +15,7 @@ _buffer_size = int(1e5)
 _gamma = 0.99
 _lr_actor = 1e-3
 _lr_critic = 1e-3
-_tau = 1e-2
+_tau = 1e-3
 _noise_decay = 0.999
 _device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -120,7 +120,7 @@ class Agent():
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1)
+        # torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1)
         self.critic_optimizer.step()
         
         # ---------------------------- update actor ---------------------------- #
